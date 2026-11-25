@@ -1,0 +1,497 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .social-page {
+    max-width: 1100px;
+    margin: 3rem auto;
+    padding: 0 1.5rem;
+  }
+
+  .social-page h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    margin-bottom: 0.4rem;
+    color: var(--text-light);
+  }
+
+  /* ── How-to steps banner ── */
+  .how-steps {
+    display: flex;
+    gap: 0;
+    background: linear-gradient(135deg, rgba(79,70,229,0.08), rgba(139,92,246,0.08));
+    border: 1.5px solid rgba(79,70,229,0.15);
+    border-radius: 1.5rem;
+    padding: 1.5rem 2rem;
+    margin: 1.5rem 0 2.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .how-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .step-num {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-weight: 800;
+    font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .step-txt strong { display: block; font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.2rem; }
+  .step-txt span   { font-size: 0.75rem; color: #64748b; }
+
+  /* ── Alert banner ── */
+  .alert-banner {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1.5px solid #f59e0b;
+    border-radius: 1rem;
+    padding: 1rem 1.5rem;
+    color: #92400e;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+
+  .alert-banner a { color: #d97706; text-decoration: underline; }
+
+  /* ── RT invite alert ── */
+  .rt-invite-alert {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 1.5px solid #22c55e;
+    border-radius: 1.25rem;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .rt-invite-alert h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #15803d;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .rt-invite-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(34,197,94,0.2);
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .rt-invite-row:last-child { border-bottom: none; }
+
+  /* ── Grid ── */
+  .social-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 768px) { .social-grid { grid-template-columns: 1fr; } }
+
+  .social-card {
+    background: white;
+    border-radius: 1.5rem;
+    padding: 1.75rem;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(0,0,0,0.03);
+  }
+
+  .social-card h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-light);
+  }
+
+  .user-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    gap: 0.75rem;
+  }
+
+  .user-row:last-child { border-bottom: none; }
+
+  .user-name  { font-weight: 600; font-size: 0.9rem; color: var(--text-light); }
+  .user-email { font-size: 0.75rem; color: #94a3b8; }
+
+  .btn-sm {
+    padding: 0.35rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+  }
+
+  .btn-add    { background: var(--primary); color: white; }
+  .btn-add:hover { background: var(--primary-hover); }
+  .btn-accept { background: #22c55e; color: white; }
+  .btn-accept:hover { background: #16a34a; }
+  .btn-reject { background: #ef4444; color: white; }
+  .btn-reject:hover { background: #dc2626; }
+  .btn-sent   { background: #f1f5f9; color: #94a3b8; cursor: default; }
+  .btn-friend { background: #dcfce7; color: #16a34a; cursor: default; }
+  .btn-join   { background: linear-gradient(135deg,var(--primary),var(--secondary)); color: white; }
+
+  .btn-group  { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+  /* RT form */
+  .rt-form { background: #f8fafc; border-radius: 1rem; padding: 1.25rem; border: 1px solid #e2e8f0; }
+
+  .rt-form select {
+    width: 100%;
+    padding: 0.65rem 1rem;
+    border-radius: 0.6rem;
+    border: 1.5px solid #e2e8f0;
+    background: white;
+    font-size: 0.875rem;
+    color: var(--text-light);
+    margin-bottom: 0.65rem;
+    outline: none;
+    transition: border-color .2s;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .rt-form select:focus { border-color: var(--primary); }
+
+  .btn-invite {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    padding: 0.7rem 1.5rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    transition: var(--transition);
+    font-size: 0.875rem;
+  }
+
+  .btn-invite:hover { transform: translateY(-2px); }
+  .btn-invite:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Session rows */
+  .session-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .session-row:last-child { border-bottom: none; }
+
+  .status-badge {
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .status-pending { background: #fef3c7; color: #d97706; }
+  .status-active  { background: #dcfce7; color: #16a34a; }
+  .status-ended   { background: #f1f5f9; color: #94a3b8; }
+
+  /* search box */
+  .people-search {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.6rem;
+    font-size: 0.875rem;
+    outline: none;
+    margin-bottom: 0.75rem;
+    background: #f8fafc;
+    color: var(--text-light);
+    transition: border-color .2s;
+  }
+
+  .people-search:focus { border-color: var(--primary); background: white; }
+
+  body.dark-mode .social-card    { background: #1e293b; border-color: #334155; }
+  body.dark-mode .user-row       { border-color: #334155; }
+  body.dark-mode .session-row    { border-color: #334155; }
+  body.dark-mode .rt-form        { background: #0f172a; border-color: #334155; }
+  body.dark-mode .rt-form select { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+  body.dark-mode .people-search  { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+  body.dark-mode .btn-sent       { background: #334155; color: #64748b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="social-page fade-in">
+  <h1>👥 Friends & Read Together</h1>
+  <p style="color:#64748b;margin-bottom:1.25rem;">Read books with friends in real time — with live chat.</p>
+
+  <!-- How it works -->
+  <div class="how-steps">
+    <div class="how-step">
+      <div class="step-num">1</div>
+      <div class="step-txt">
+        <strong>Find a Friend</strong>
+        <span>Search people below and send a friend request</span>
+      </div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">2</div>
+      <div class="step-txt">
+        <strong>They Accept</strong>
+        <span>Once accepted, they appear in your Friends list</span>
+      </div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">3</div>
+      <div class="step-txt">
+        <strong>Invite to Read</strong>
+        <span>Pick a friend + book and send a Read Together invite</span>
+      </div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">4</div>
+      <div class="step-txt">
+        <strong>Read & Chat</strong>
+        <span>Both get taken to the book — pages sync, chat in real time</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscription warning -->
+  {% if not has_sub %}
+  <div class="alert-banner">
+    <i class="fas fa-crown"></i>
+    Read Together requires a Premium subscription.
+    <a href="{{ url_for('subscription') }}">Subscribe for ₹99/month →</a>
+  </div>
+  {% endif %}
+
+  <!-- Pending RT invites FOR ME — most important, shown at top -->
+  {% if pending_rt %}
+  <div class="rt-invite-alert">
+    <h3><i class="fas fa-book-open"></i> Read Together Invitations ({{ pending_rt|length }})</h3>
+    {% for s in pending_rt %}
+    <div class="rt-invite-row">
+      <div>
+        <div style="font-weight:700;font-size:0.9rem;color:#15803d;">
+          <i class="fas fa-user"></i> {{ s.host.username }} invited you to read
+        </div>
+        <div style="font-size:0.8rem;color:#166534;margin-top:0.2rem;">
+          📖 <strong>{{ s.book.title }}</strong>
+        </div>
+      </div>
+      <div class="btn-group">
+        {% if has_sub %}
+        <form method="POST" action="{{ url_for('accept_read_together', session_id=s.id) }}" style="display:inline;">
+          <button type="submit" class="btn-sm btn-accept"><i class="fas fa-check"></i> Accept & Read</button>
+        </form>
+        {% else %}
+        <a href="{{ url_for('subscription') }}" class="btn-sm btn-add"><i class="fas fa-lock"></i> Subscribe to Accept</a>
+        {% endif %}
+        <form method="POST" action="{{ url_for('decline_read_together', session_id=s.id) }}" style="display:inline;">
+          <button type="submit" class="btn-sm btn-reject"><i class="fas fa-times"></i> Decline</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Pending friend requests FOR ME -->
+  {% if pending_received %}
+  <div class="social-card" style="border-left: 4px solid #f59e0b;">
+    <h2><i class="fas fa-bell" style="color:#f59e0b;"></i> Friend Requests ({{ pending_received|length }})</h2>
+    {% for fr in pending_received %}
+    <div class="user-row">
+      <div>
+        <div class="user-name">{{ fr.sender.username }}</div>
+        <div class="user-email">{{ fr.sender.email }}</div>
+      </div>
+      <div class="btn-group">
+        <form method="POST" action="{{ url_for('accept_friend_request', request_id=fr.id) }}" style="display:inline;">
+          <button type="submit" class="btn-sm btn-accept"><i class="fas fa-check"></i> Accept</button>
+        </form>
+        <form method="POST" action="{{ url_for('reject_friend_request', request_id=fr.id) }}" style="display:inline;">
+          <button type="submit" class="btn-sm btn-reject"><i class="fas fa-times"></i> Reject</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="social-grid">
+
+    <!-- LEFT: Friends + People -->
+    <div>
+
+      <!-- Friends -->
+      <div class="social-card">
+        <h2><i class="fas fa-users" style="color:var(--primary);"></i> My Friends ({{ friends|length }})</h2>
+        {% if friends %}
+          {% for f in friends %}
+          <div class="user-row">
+            <div>
+              <div class="user-name">{{ f.username }}</div>
+              <div class="user-email">{{ f.email }}</div>
+            </div>
+            <span class="btn-sm btn-friend"><i class="fas fa-check"></i> Friends</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p style="color:#94a3b8;font-size:0.85rem;text-align:center;padding:1rem 0;">
+            No friends yet.<br>Find people below and send a request!
+          </p>
+        {% endif %}
+      </div>
+
+      <!-- Find People -->
+      <div class="social-card">
+        <h2><i class="fas fa-user-plus" style="color:#22c55e;"></i> Find People</h2>
+        <input type="text" class="people-search" id="people-search" placeholder="🔍 Search by name or email…">
+        <div id="people-list">
+          {% for u in all_users %}
+          <div class="user-row" data-name="{{ u.username|lower }}" data-email="{{ u.email|lower }}">
+            <div>
+              <div class="user-name">{{ u.username }}</div>
+              <div class="user-email">{{ u.email }}</div>
+            </div>
+            {% if u.id in friend_ids %}
+              <span class="btn-sm btn-friend"><i class="fas fa-check"></i> Friends</span>
+            {% elif u.id in sent_ids %}
+              <span class="btn-sm btn-sent"><i class="fas fa-clock"></i> Sent</span>
+            {% else %}
+              <form method="POST" action="{{ url_for('send_friend_request', to_user_id=u.id) }}">
+                <button type="submit" class="btn-sm btn-add"><i class="fas fa-user-plus"></i> Add</button>
+              </form>
+            {% endif %}
+          </div>
+          {% else %}
+          <p style="color:#94a3b8;font-size:0.85rem;">No other users registered yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Invite + Sessions -->
+    <div>
+
+      <!-- Invite to Read Together -->
+      <div class="social-card">
+        <h2><i class="fas fa-book-reader" style="color:var(--primary);"></i> Invite to Read Together</h2>
+        {% if not has_sub %}
+          <div style="text-align:center;padding:1rem 0;">
+            <i class="fas fa-lock" style="font-size:1.5rem;color:#94a3b8;margin-bottom:0.5rem;display:block;"></i>
+            <p style="color:#64748b;font-size:0.85rem;margin-bottom:0.75rem;">Requires a Premium subscription</p>
+            <a href="{{ url_for('subscription') }}" class="btn-sm btn-add" style="display:inline-block;">Get Premium — ₹99</a>
+          </div>
+        {% elif not friends %}
+          <p style="color:#94a3b8;font-size:0.85rem;text-align:center;padding:1rem 0;">
+            Add friends first, then invite them to read together!
+          </p>
+        {% else %}
+          <form method="POST" action="{{ url_for('invite_read_together') }}" class="rt-form">
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:0.3rem;">Select Friend</label>
+            <select name="friend_id" required>
+              <option value="">— choose a friend —</option>
+              {% for f in friends %}
+              <option value="{{ f.id }}">{{ f.username }}</option>
+              {% endfor %}
+            </select>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:0.3rem;">Select Book</label>
+            <select name="book_id" required>
+              <option value="">— choose a book —</option>
+              {% for b in books %}
+              <option value="{{ b.id }}">{{ b.title }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn-invite">
+              <i class="fas fa-paper-plane"></i> Send Read Together Invite
+            </button>
+          </form>
+        {% endif %}
+      </div>
+
+      <!-- My Sessions -->
+      <div class="social-card">
+        <h2><i class="fas fa-users-cog" style="color:#8b5cf6;"></i> My Sessions</h2>
+        {% if my_sessions %}
+          {% for s in my_sessions %}
+          <div class="session-row">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:0.85rem;color:var(--text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                📖 {{ s.book.title }}
+              </div>
+              <div style="font-size:0.75rem;color:#94a3b8;margin-top:0.15rem;">
+                {% if s.host_id == current_user.id %}
+                  You invited {{ s.guest.username }}
+                {% else %}
+                  Invited by {{ s.host.username }}
+                {% endif %}
+              </div>
+            </div>
+            <div class="btn-group">
+              <span class="status-badge status-{{ s.status }}">{{ s.status|capitalize }}</span>
+              {% if s.status == 'active' %}
+                <a href="{{ url_for('read_together', session_id=s.id) }}" class="btn-sm btn-join">
+                  <i class="fas fa-book-open"></i> Join
+                </a>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p style="color:#94a3b8;font-size:0.85rem;text-align:center;padding:1rem 0;">No sessions yet.</p>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  /* Live search for people */
+  document.getElementById('people-search').addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    document.querySelectorAll('#people-list .user-row').forEach(row => {
+      const name  = row.dataset.name  || '';
+      const email = row.dataset.email || '';
+      row.style.display = (!q || name.includes(q) || email.includes(q)) ? '' : 'none';
+    });
+  });
+</script>
+{% endblock %}

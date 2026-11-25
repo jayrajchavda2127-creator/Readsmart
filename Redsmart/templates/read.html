@@ -1,0 +1,809 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<style>
+/* ── Reset / shell ───────────────────────────── */
+html, body { overflow: hidden; height: 100%; }
+
+.reader-shell {
+  display: flex;
+  height: calc(100vh - 70px);
+  background: radial-gradient(ellipse at center, #2a1f0e 0%, #130e05 100%);
+  font-family: 'Inter', sans-serif;
+  position: relative;
+}
+
+/* ── Sidebar ─────────────────────────────────── */
+.r-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.35);
+  border-right: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1rem;
+  gap: 1rem;
+  overflow-y: auto;
+  transition: transform 0.3s;
+}
+
+.r-sidebar-cover {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: 0.6rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+}
+
+.r-sidebar h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.95rem;
+  color: #e2e8f0;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.r-sidebar p { color: #64748b; font-size: 0.75rem; margin: 0; }
+
+.r-prog-box {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 0.6rem;
+  padding: 0.85rem;
+}
+
+.r-prog-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 0.4rem;
+}
+
+.r-prog-track {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.r-prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg,#6366f1,#8b5cf6);
+  border-radius: 9999px;
+  transition: width .5s ease;
+  width: 0%;
+}
+
+.r-prog-txt {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #475569;
+  margin-top: 0.4rem;
+}
+
+.r-prog-txt strong { color: #818cf8; }
+
+.r-back {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #475569;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: auto;
+  transition: color .2s;
+}
+.r-back:hover { color: #818cf8; }
+
+/* ── Main area ───────────────────────────────── */
+.r-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Toolbar ─────────────────────────────────── */
+.r-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0,0,0,0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.r-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #94a3b8;
+  width: 34px; height: 34px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all .2s;
+  flex-shrink: 0;
+}
+.r-btn:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
+
+.r-pg-info {
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 90px;
+  text-align: center;
+}
+.r-pg-info strong { color: #818cf8; }
+
+/* ── Book stage ──────────────────────────────── */
+.book-stage {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;          /* scrollable in both axes when zoomed */
+  position: relative;
+  touch-action: pan-x pan-y;
+  padding: 1.5rem 1rem;
+}
+
+/* zoom wrapper — grows naturally so scroll works */
+.book-zoom-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: top center;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* ── Loading overlay ─────────────────────────── */
+.r-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  z-index: 50;
+}
+
+.r-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(255,255,255,0.08);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.r-load-txt { color: #64748b; font-size: 0.8rem; }
+
+.r-load-bar {
+  width: 160px; height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.r-load-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg,#6366f1,#8b5cf6);
+  width: 0%;
+  transition: width .25s;
+}
+
+/* ── The 3-D book ────────────────────────────── */
+.book-wrap {
+  display: none;          /* shown after load */
+  position: relative;
+  perspective: 2500px;
+}
+
+/*  Two-page spread container */
+.spread {
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Each page (left / right) */
+.page-slot {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #f5f0e8;
+}
+
+/* Spine shadow on inner edges */
+.page-slot.left  { border-radius: 2px 0 0 2px; box-shadow: inset -6px 0 18px rgba(0,0,0,0.25); }
+.page-slot.right { border-radius: 0 2px 2px 0; box-shadow: inset  6px 0 18px rgba(0,0,0,0.25); }
+
+.page-slot canvas {
+  display: block;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Flip animation ──────────────────────────── */
+/* The turning page sits on top, rotates around its spine edge */
+.flip-page {
+  position: absolute;
+  top: 0;
+  transform-origin: left center;   /* right→left flip: origin left  */
+  transform-style: preserve-3d;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.flip-page.flip-left  { transform-origin: right center; }  /* left→right */
+.flip-page.flip-right { transform-origin: left center; }   /* right→left */
+
+.flip-page .face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  overflow: hidden;
+  background: #f5f0e8;
+}
+
+.flip-page .face canvas { display: block; width: 100%; height: 100%; }
+
+.flip-page .face.back {
+  transform: rotateY(180deg);
+}
+
+/* Page curl gradient overlay */
+.curl-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 11;
+  opacity: 0;
+}
+
+/* ── Arrow nav ───────────────────────────────── */
+.arrow-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px; height: 40px;
+  background: rgba(99,102,241,.8);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+  z-index: 20;
+  box-shadow: 0 4px 14px rgba(0,0,0,.5);
+}
+.arrow-btn:hover { background: #4f46e5; transform: translateY(-50%) scale(1.1); }
+.arrow-btn.prev  { left: .6rem; }
+.arrow-btn.next  { right: .6rem; }
+
+.key-hint {
+  position: absolute;
+  bottom: .6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,.18);
+  font-size: .65rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Mobile sidebar toggle ───────────────────── */
+.sb-toggle {
+  display: none;
+  position: absolute;
+  top: .5rem; left: .5rem;
+  z-index: 30;
+  background: rgba(99,102,241,.85);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: .35rem .65rem;
+  font-size: .75rem;
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  .r-sidebar {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    transform: translateX(-100%);
+    z-index: 40;
+    background: rgba(10,8,4,.95);
+  }
+  .r-sidebar.open { transform: translateX(0); }
+  .sb-toggle { display: block; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set pdf_name  = book.pdfs.split('/')[-1] if '/' in book.pdfs else book.pdfs %}
+{% set pdf_url   = url_for('static', filename='pdfs/' + pdf_name) %}
+{% set cover_url = url_for('static', filename='cover/' + (book.cover.split('/')[-1] if '/' in book.cover else book.cover)) %}
+
+<div class="reader-shell">
+
+  <!-- Sidebar -->
+  <aside class="r-sidebar" id="r-sidebar">
+    <a href="{{ url_for('library') }}" class="r-back"><i class="fas fa-arrow-left"></i> Library</a>
+    <img src="{{ cover_url }}" class="r-sidebar-cover" alt="Cover"
+         onerror="this.onerror=null;this.src='https://placehold.co/300x450?text=No+Cover';">
+    <div>
+      <h3>{{ book.title }}</h3>
+      <p>By {{ book.author or 'Unknown Author' }}</p>
+    </div>
+    <div class="r-prog-box">
+      <div class="r-prog-row">
+        <span>Progress</span><span id="pct-label">0%</span>
+      </div>
+      <div class="r-prog-track"><div class="r-prog-fill" id="pct-fill"></div></div>
+      <div class="r-prog-txt">Page <strong id="page-label">{{ current_page }}</strong> of {{ book.total_pages }}</div>
+    </div>
+    <div>
+      <small style="color:#334155;font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;">Settings</small>
+      <div style="display:flex;gap:.6rem;margin-top:.6rem;">
+        <button onclick="toggleTheme()" class="r-btn" title="Theme"><i class="fas fa-moon"></i></button>
+        <button onclick="goFullscreen()" class="r-btn" title="Fullscreen"><i class="fas fa-expand" id="fs-ico"></i></button>
+      </div>
+    </div>
+    <a href="{{ url_for('library') }}" class="r-back"><i class="fas fa-arrow-left"></i> Back to Library</a>
+  </aside>
+
+  <!-- Main -->
+  <div class="r-main">
+
+    <!-- Toolbar -->
+    <div class="r-toolbar">
+      <button class="r-btn" id="btn-first" title="First"><i class="fas fa-step-backward"></i></button>
+      <button class="r-btn" id="btn-prev"  title="Prev (←)"><i class="fas fa-chevron-left"></i></button>
+      <span class="r-pg-info">Pages <strong id="tb-pg">1</strong> / {{ book.total_pages }}</span>
+      <button class="r-btn" id="btn-next"  title="Next (→)"><i class="fas fa-chevron-right"></i></button>
+      <button class="r-btn" id="btn-last"  title="Last"><i class="fas fa-step-forward"></i></button>
+      <div style="width:1px;height:22px;background:rgba(255,255,255,.08);margin:0 .15rem;"></div>
+      <button class="r-btn" id="btn-zout"  title="Zoom out"><i class="fas fa-search-minus"></i></button>
+      <span style="color:#475569;font-size:.72rem;font-weight:700;min-width:36px;text-align:center;" id="zoom-lbl">100%</span>
+      <button class="r-btn" id="btn-zin"   title="Zoom in"><i class="fas fa-search-plus"></i></button>
+    </div>
+
+    <!-- Stage -->
+    <div class="book-stage" id="book-stage">
+      <button class="sb-toggle" onclick="document.getElementById('r-sidebar').classList.toggle('open')">☰</button>
+
+      <!-- Loader -->
+      <div class="r-loading" id="r-loading">
+        <div class="r-spinner"></div>
+        <span class="r-load-txt" id="load-txt">Opening book…</span>
+        <div class="r-load-bar"><div class="r-load-bar-fill" id="load-bar"></div></div>
+      </div>
+
+      <!-- Book -->
+      <div class="book-zoom-wrap" id="book-zoom-wrap">
+        <div class="book-wrap" id="book-wrap">
+          <div class="spread" id="spread">
+            <div class="page-slot left"  id="slot-left"></div>
+            <div class="page-slot right" id="slot-right"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="arrow-btn prev" id="arrow-prev"><i class="fas fa-chevron-left"></i></button>
+      <button class="arrow-btn next" id="arrow-next"><i class="fas fa-chevron-right"></i></button>
+      <div class="key-hint">← → keys · swipe · click edge to flip</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+  /* ── Config ───────────────────────────────── */
+  const PDF_URL     = "{{ pdf_url }}";
+  const TOTAL_PGS   = {{ book.total_pages | default(1) }};
+  const BOOK_ID     = {{ book.id }};
+  const INIT_PG     = Math.max(1, {{ current_page | default(1) }});
+
+  let pdfDoc    = null;
+  let curPage   = INIT_PG % 2 === 0 ? INIT_PG - 1 : INIT_PG; // always odd (left of spread)
+  let pageW     = 0, pageH = 0;
+  let zoomPct   = 100;
+  let isFlipping = false;
+  let lastSaved = INIT_PG;
+
+  /* cache rendered canvases so we don't re-render same pages */
+  const cache = {};   // mutable ref wrapper
+
+  /* ── Compute display size ─────────────────── */
+  function computeSize() {
+    const stage  = document.getElementById('book-stage');
+    const sw     = stage.clientWidth  - 60;   // less margin = more page width
+    const sh     = stage.clientHeight - 20;
+    /* two pages side by side, A4 ratio ~0.707 */
+    const byW    = Math.floor(sw / 2);
+    const byH    = Math.floor(byW / 0.707);
+    if (byH <= sh) {
+      pageW = byW; pageH = byH;
+    } else {
+      pageH = sh; pageW = Math.floor(sh * 0.707);
+    }
+    pageW = Math.max(pageW, 140);
+    pageH = Math.max(pageH, 200);
+  }
+
+  /* ── Render one PDF page → canvas ─────────── */
+  async function renderPdfPage(num) {
+    if (cache[num]) return cache[num];
+    const page = await pdfDoc.getPage(num);
+    const vp0  = page.getViewport({ scale: 1 });
+    // Render at high quality: use max of devicePixelRatio*2 or 3.5
+    // Higher value = bigger/crisper text
+    const dpr    = window.devicePixelRatio || 1;
+    const quality = Math.max(dpr * 2, 3.5);
+    const sc   = (pageW / vp0.width) * quality;
+    const vp   = page.getViewport({ scale: sc });
+    const c    = document.createElement('canvas');
+    // Physical pixel size = high-res
+    c.width    = Math.floor(vp.width);
+    c.height   = Math.floor(vp.height);
+    // CSS display size = logical pageW/pageH so layout stays correct
+    c.style.width  = pageW + 'px';
+    c.style.height = pageH + 'px';
+    const ctx  = c.getContext('2d');
+    // Hint browser to use highest quality downscaling
+    ctx.imageSmoothingEnabled  = true;
+    ctx.imageSmoothingQuality  = 'high';
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    cache[num] = c;
+    return c;
+  }
+
+  /* ── Blank canvas (cover / end) ────────────── */
+  function blankCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const c   = document.createElement('canvas');
+    c.width   = pageW * dpr;
+    c.height  = pageH * dpr;
+    c.style.width  = pageW + 'px';
+    c.style.height = pageH + 'px';
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f5f0e8';
+    ctx.fillRect(0, 0, c.width, c.height);
+    return c;
+  }
+
+  /* ── Copy canvas pixels properly (cloneNode loses pixel data) ── */
+  function copyCanvas(src) {
+    const dst = document.createElement('canvas');
+    dst.width  = src.width;
+    dst.height = src.height;
+    dst.style.width  = src.style.width  || pageW + 'px';
+    dst.style.height = src.style.height || pageH + 'px';
+    dst.getContext('2d').drawImage(src, 0, 0);
+    return dst;
+  }
+
+  /* ── Put canvas into a slot ─────────────────── */
+  function putInSlot(slotId, canvas) {
+    const slot = document.getElementById(slotId);
+    slot.style.width  = pageW + 'px';
+    slot.style.height = pageH + 'px';
+    slot.innerHTML = '';
+    if (canvas) slot.appendChild(copyCanvas(canvas));
+  }
+
+  /* ── Show current spread (no animation) ─────── */
+  async function showSpread(leftPg) {
+    const lc = (leftPg >= 1 && leftPg <= TOTAL_PGS)
+                  ? await renderPdfPage(leftPg) : blankCanvas();
+    const rp = leftPg + 1;
+    const rc = (rp >= 1 && rp <= TOTAL_PGS)
+                  ? await renderPdfPage(rp) : blankCanvas();
+    putInSlot('slot-left',  lc);
+    putInSlot('slot-right', rc);
+    updateUI(leftPg);
+    // pre-cache neighbors silently
+    [leftPg-2, leftPg-1, leftPg+2, leftPg+3].forEach(p => {
+      if (p >= 1 && p <= TOTAL_PGS) renderPdfPage(p).catch(()=>{});
+    });
+  }
+
+  /* ── Page flip animation ─────────────────────
+     direction: 'next' | 'prev'                  */
+  async function flipTo(newLeftPg, direction) {
+    if (isFlipping) return;
+    if (newLeftPg < 1 || newLeftPg > TOTAL_PGS) return;
+    isFlipping = true;
+
+    const wrap   = document.getElementById('book-wrap');
+    const spread = document.getElementById('spread');
+
+    /* ── Determine which pages are involved ── */
+    // direction=next: right page (curPage+1) flips over to become new left
+    // direction=prev: left page (curPage) flips back to become new right
+    let frontPgNum, backPgNum;
+    if (direction === 'next') {
+      frontPgNum = curPage + 1;   // the page turning (front = current right)
+      backPgNum  = newLeftPg;     // what's revealed on back = new left
+    } else {
+      frontPgNum = curPage;       // the page turning (front = current left)
+      backPgNum  = newLeftPg + 1; // what's revealed on back = new right
+    }
+
+    const frontCanvas = (frontPgNum >= 1 && frontPgNum <= TOTAL_PGS)
+      ? await renderPdfPage(frontPgNum) : blankCanvas();
+    const backCanvas  = (backPgNum  >= 1 && backPgNum  <= TOTAL_PGS)
+      ? await renderPdfPage(backPgNum)  : blankCanvas();
+
+    /* ── Build the flipping card ── */
+    const card = document.createElement('div');
+    card.style.cssText = [
+      'position:absolute',
+      `width:${pageW}px`,
+      `height:${pageH}px`,
+      'transform-style:preserve-3d',
+      'pointer-events:none',
+      'z-index:15',
+      'top:0',
+    ].join(';');
+
+    // Position: for next the card starts on RIGHT slot, for prev on LEFT slot
+    if (direction === 'next') {
+      card.style.left            = pageW + 'px';   // right half of spread
+      card.style.transformOrigin = 'left center';
+      card.style.transform       = 'rotateY(0deg)';
+    } else {
+      card.style.left            = '0px';           // left half of spread
+      card.style.transformOrigin = 'right center';
+      card.style.transform       = 'rotateY(0deg)';
+    }
+
+    /* Front face */
+    const front = document.createElement('div');
+    front.style.cssText = 'position:absolute;inset:0;backface-visibility:hidden;overflow:hidden;background:#f5f0e8;';
+    const fCanvas = copyCanvas(frontCanvas);
+    fCanvas.style.width = '100%'; fCanvas.style.height = '100%';
+    front.appendChild(fCanvas);
+
+    /* Back face — mirrored so text reads correctly */
+    const back = document.createElement('div');
+    back.style.cssText = 'position:absolute;inset:0;backface-visibility:hidden;overflow:hidden;background:#f5f0e8;transform:rotateY(180deg);';
+    // Draw back canvas mirrored horizontally so it reads correctly when flipped
+    const bDst = document.createElement('canvas');
+    bDst.width  = backCanvas.width;
+    bDst.height = backCanvas.height;
+    bDst.style.width = '100%'; bDst.style.height = '100%';
+    const bCtx = bDst.getContext('2d');
+    bCtx.translate(bDst.width, 0);
+    bCtx.scale(-1, 1);
+    bCtx.drawImage(backCanvas, 0, 0);
+    back.appendChild(bDst);
+
+    /* Curl shadow overlay */
+    const shadow = document.createElement('div');
+    shadow.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+    if (direction === 'next') {
+      shadow.style.background = 'linear-gradient(to left,rgba(0,0,0,0.2) 0%,transparent 50%)';
+    } else {
+      shadow.style.background = 'linear-gradient(to right,rgba(0,0,0,0.2) 0%,transparent 50%)';
+    }
+    front.appendChild(shadow);
+
+    card.appendChild(front);
+    card.appendChild(back);
+    spread.appendChild(card);
+
+    /* ── Trigger animation ── */
+    card.style.transition = 'transform 0.5s cubic-bezier(0.645,0.045,0.355,1)';
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (direction === 'next') {
+        card.style.transform = 'rotateY(-180deg)';  // flip left
+      } else {
+        card.style.transform = 'rotateY(180deg)';   // flip right
+      }
+    }));
+
+    /* ── After flip: swap spread content, remove card ── */
+    setTimeout(async () => {
+      curPage = newLeftPg;
+      await showSpread(curPage);
+      if (spread.contains(card)) spread.removeChild(card);
+      isFlipping = false;
+      saveProgress(curPage);
+    }, 520);
+  }
+
+  /* ── UI updates ─────────────────────────────── */
+  function updateUI(leftPg) {
+    const pg  = leftPg;
+    const pct = Math.round((Math.min(pg + 1, TOTAL_PGS) / TOTAL_PGS) * 100);
+    document.getElementById('pct-label').textContent   = pct + '%';
+    document.getElementById('pct-fill').style.width    = pct + '%';
+    document.getElementById('page-label').textContent  = pg;
+    document.getElementById('tb-pg').textContent       = pg + (pg < TOTAL_PGS ? '-' + (pg+1) : '');
+  }
+
+  function saveProgress(pg) {
+    if (pg === lastSaved) return;
+    lastSaved = pg;
+    fetch('{{ url_for("update_progress") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `book_id=${BOOK_ID}&current_page=${pg}`
+    }).catch(() => {});
+  }
+
+  /* ── Init ────────────────────────────────────── */
+  async function init() {
+    computeSize();
+
+    /* Size the spread */
+    const spread = document.getElementById('spread');
+    spread.style.width  = (pageW * 2) + 'px';
+    spread.style.height = pageH + 'px';
+    document.getElementById('book-wrap').style.boxShadow =
+      `0 30px 60px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.04)`;
+
+    /* Reset zoom wrapper natural size then apply current zoom */
+    const zw = document.getElementById('book-zoom-wrap');
+    zw.style.width  = (pageW * 2 + 4) + 'px';
+    zw.style.height = (pageH + 4) + 'px';
+    applyZoom();
+
+    document.getElementById('load-txt').textContent = 'Loading PDF…';
+    document.getElementById('load-bar').style.width = '20%';
+
+    try {
+      pdfDoc = await pdfjsLib.getDocument(PDF_URL).promise;
+    } catch(e) {
+      document.getElementById('r-loading').innerHTML =
+        '<div style="color:#f87171;text-align:center;padding:1.5rem;font-size:.85rem;"><i class="fas fa-exclamation-triangle" style="font-size:1.5rem;display:block;margin-bottom:.5rem;"></i>Could not load PDF.</div>';
+      return;
+    }
+
+    document.getElementById('load-bar').style.width = '50%';
+    document.getElementById('load-txt').textContent = 'Rendering first pages…';
+
+    /* Ensure curPage is odd (left of spread) */
+    if (curPage % 2 === 0) curPage = Math.max(1, curPage - 1);
+
+    /* Render first two pages */
+    if (curPage >= 1 && curPage <= TOTAL_PGS) {
+      await renderPdfPage(curPage);
+    }
+    if (curPage + 1 <= TOTAL_PGS) {
+      await renderPdfPage(curPage + 1);
+    }
+
+    document.getElementById('load-bar').style.width = '100%';
+
+    await showSpread(curPage);
+
+    /* Show book, hide loader */
+    document.getElementById('r-loading').style.display  = 'none';
+    document.getElementById('book-wrap').style.display  = 'block';
+  }
+
+  /* ── Controls ────────────────────────────────── */
+  function goNext() { if (!isFlipping) flipTo(curPage + 2, 'next'); }
+  function goPrev() { if (!isFlipping && curPage > 1) flipTo(curPage - 2, 'prev'); }
+
+  document.getElementById('btn-next').addEventListener('click',  goNext);
+  document.getElementById('btn-prev').addEventListener('click',  goPrev);
+  document.getElementById('arrow-next').addEventListener('click', goNext);
+  document.getElementById('arrow-prev').addEventListener('click', goPrev);
+  document.getElementById('btn-first').addEventListener('click', () => { if (!isFlipping) { curPage=1; showSpread(1); } });
+  document.getElementById('btn-last').addEventListener('click',  () => {
+    if (!isFlipping) {
+      const lp = TOTAL_PGS % 2 === 0 ? TOTAL_PGS - 1 : TOTAL_PGS;
+      curPage = lp; showSpread(lp);
+    }
+  });
+
+  /* Keyboard */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') goNext();
+    if (e.key === 'ArrowLeft')  goPrev();
+  });
+
+  /* Swipe on mobile — only horizontal swipe triggers page flip */
+  let touchStartX = 0;
+  let touchStartY = 0;
+  document.getElementById('book-stage').addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  document.getElementById('book-stage').addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    // Only fire if horizontal movement is dominant (not a vertical scroll)
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) goNext(); else goPrev();
+    }
+  }, { passive: true });
+
+  /* Click on left/right half of spread to flip */
+  document.getElementById('spread').addEventListener('click', e => {
+    const rect = document.getElementById('spread').getBoundingClientRect();
+    const x    = e.clientX - rect.left;
+    if (x < rect.width / 2) goPrev(); else goNext();
+  });
+
+  /* Zoom — scale the zoom-wrap so the scroll container can expand */
+  let zoomLevel = 100;
+  function applyZoom() {
+    const zw    = document.getElementById('book-zoom-wrap');
+    const stage = document.getElementById('book-stage');
+    const z     = zoomLevel / 100;
+    zw.style.transform       = `scale(${z})`;
+    zw.style.transformOrigin = 'top center';
+    // Expand the wrapper's footprint so scroll container sees the real size
+    const bookW = (pageW * 2 + 4) * z;
+    const bookH = (pageH + 4) * z;
+    zw.style.width    = Math.max(bookW, pageW * 2 + 4) + 'px';
+    zw.style.height   = Math.max(bookH, pageH + 4) + 'px';
+    // When zoomed, allow the stage to scroll; when at 100%, center it
+    if (zoomLevel > 100) {
+      stage.style.alignItems      = 'flex-start';
+      stage.style.justifyContent  = 'flex-start';
+    } else {
+      stage.style.alignItems      = 'center';
+      stage.style.justifyContent  = 'center';
+    }
+  }
+  document.getElementById('btn-zin').addEventListener('click', () => {
+    zoomLevel = Math.min(zoomLevel + 15, 200);
+    document.getElementById('zoom-lbl').textContent = zoomLevel + '%';
+    applyZoom();
+  });
+  document.getElementById('btn-zout').addEventListener('click', () => {
+    zoomLevel = Math.max(zoomLevel - 15, 40);
+    document.getElementById('zoom-lbl').textContent = zoomLevel + '%';
+    applyZoom();
+  });
+
+  /* Fullscreen */
+  function goFullscreen() {
+    const el  = document.getElementById('book-stage');
+    const ico = document.getElementById('fs-ico');
+    if (!document.fullscreenElement) {
+      el.requestFullscreen && el.requestFullscreen();
+      ico.className = 'fas fa-compress';
+    } else {
+      document.exitFullscreen && document.exitFullscreen();
+      ico.className = 'fas fa-expand';
+    }
+  }
+
+  /* Rebuild on resize — clear cache since pageW/pageH changes */
+  let rzTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(rzTimer);
+    rzTimer = setTimeout(async () => {
+      Object.keys(cache).forEach(k => delete cache[k]);
+      await init();
+    }, 400);
+  });
+
+  /* Start */
+  init();
+</script>
+{% endblock %}

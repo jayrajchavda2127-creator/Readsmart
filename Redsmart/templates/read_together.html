@@ -1,0 +1,425 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .rt-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    height: calc(100vh - 70px);
+    overflow: hidden;
+    background: #0f172a;
+  }
+
+  /* ── 3D Book Reader ── */
+  .rt-reader {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background: #1e293b;
+  }
+
+  .reader-toolbar-rt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.75rem 1.5rem;
+    background: rgba(15,23,42,0.9);
+    border-bottom: 1px solid #334155;
+    flex-shrink: 0;
+  }
+
+  .tb-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tb-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+  .zoom-label {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-weight: 700;
+    min-width: 50px;
+    text-align: center;
+  }
+
+  .book-stage {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    gap: 1.5rem;
+    scroll-behavior: smooth;
+  }
+
+  /* 3D page wrapper */
+  .page-3d-wrap {
+    position: relative;
+    perspective: 2000px;
+    transform-style: preserve-3d;
+    cursor: pointer;
+    transition: transform 0.3s;
+  }
+
+  .page-3d-wrap:hover { transform: rotateY(-2deg) translateX(4px); }
+
+  .page-3d-wrap canvas {
+    display: block;
+    max-width: 100%;
+    border-radius: 2px 12px 12px 2px;
+    box-shadow:
+      -4px 0 12px rgba(0,0,0,0.6),
+      0 20px 40px rgba(0,0,0,0.5),
+      inset -3px 0 8px rgba(0,0,0,0.3);
+  }
+
+  .page-num-tag {
+    position: absolute;
+    bottom: -1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: #64748b;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* ── Chat Panel ── */
+  .rt-chat {
+    display: flex;
+    flex-direction: column;
+    background: #0f172a;
+    border-left: 1px solid #1e293b;
+    height: 100%;
+  }
+
+  .chat-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #1e293b;
+    background: #0f172a;
+  }
+
+  .chat-header h3 {
+    color: #f1f5f9;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .chat-header .book-title-small {
+    color: #64748b;
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .chat-msg {
+    max-width: 85%;
+    padding: 0.65rem 1rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .chat-msg.mine {
+    background: var(--primary);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
+
+  .chat-msg.theirs {
+    background: #1e293b;
+    color: #e2e8f0;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+  }
+
+  .chat-msg .msg-sender {
+    font-size: 0.7rem;
+    font-weight: 700;
+    opacity: 0.75;
+    margin-bottom: 0.2rem;
+  }
+
+  .chat-msg .msg-time {
+    font-size: 0.65rem;
+    opacity: 0.6;
+    margin-top: 0.3rem;
+    text-align: right;
+  }
+
+  .chat-input-area {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid #1e293b;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+    background: #0f172a;
+  }
+
+  .chat-input-area textarea {
+    flex: 1;
+    background: #1e293b;
+    border: 1.5px solid #334155;
+    border-radius: 0.75rem;
+    color: #e2e8f0;
+    padding: 0.65rem 1rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    resize: none;
+    max-height: 100px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .chat-input-area textarea:focus { border-color: var(--primary); }
+
+  .send-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .send-btn:hover { background: var(--primary-hover); transform: scale(1.05); }
+
+  .sync-indicator {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-align: center;
+    padding: 0.4rem;
+    border-top: 1px solid #1e293b;
+  }
+
+  .sync-indicator span { color: #22c55e; }
+
+  @media (max-width: 768px) {
+    .rt-layout { grid-template-columns: 1fr; }
+    .rt-chat { display: none; }
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="rt-layout">
+
+  <!-- Reader -->
+  <div class="rt-reader">
+    <div class="reader-toolbar-rt">
+      <a href="{{ url_for('social') }}" class="tb-btn" title="Back"><i class="fas fa-arrow-left"></i></a>
+      <button id="rt-zoom-out" class="tb-btn"><i class="fas fa-search-minus"></i></button>
+      <span class="zoom-label" id="rt-zoom-val">120%</span>
+      <button id="rt-zoom-in" class="tb-btn"><i class="fas fa-search-plus"></i></button>
+      <span style="color: #64748b; font-size: 0.8rem; margin: 0 0.5rem;">Page <strong style="color:#818cf8;" id="rt-page-label">{{ current_page }}</strong> / {{ book.total_pages }}</span>
+      <button onclick="document.querySelector('.book-stage').requestFullscreen()" class="tb-btn"><i class="fas fa-expand"></i></button>
+    </div>
+
+    <div class="book-stage" id="book-stage">
+      <div id="rt-pdf-container"></div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="rt-chat">
+    <div class="chat-header">
+      <h3><i class="fas fa-book-open" style="color: var(--primary);"></i> Reading Together</h3>
+      <div class="book-title-small">{{ book.title }}</div>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+      {% for m in messages %}
+      <div class="chat-msg {% if m.sender_id == current_user.id %}mine{% else %}theirs{% endif %}">
+        {% if m.sender_id != current_user.id %}
+        <div class="msg-sender">{{ m.sender.username }}</div>
+        {% endif %}
+        {{ m.message }}
+        <div class="msg-time">{{ m.created_at.strftime('%H:%M') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="sync-indicator">
+      Page synced with partner: <span id="sync-page-display">{{ current_page }}</span>
+    </div>
+
+    <div class="chat-input-area">
+      <textarea id="chat-input" placeholder="Type a message..." rows="2"></textarea>
+      <button class="send-btn" id="send-btn"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+</div>
+
+{% set pdf_name = book.pdfs.split('/')[-1] if '/' in book.pdfs else book.pdfs %}
+{% set pdf_url = url_for('static', filename='pdfs/' + pdf_name) %}
+
+<script>
+  const SESSION_ID = {{ session.id }};
+  const CURRENT_USER_ID = {{ current_user.id }};
+  const TOTAL_PAGES = {{ book.total_pages }};
+  const PDF_URL = "{{ pdf_url }}";
+  let scale = 1.2;
+  let lastSentPage = {{ current_page }};
+  let lastMsgId = 0;
+
+  // ── PDF Rendering ──
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const p = parseInt(entry.target.getAttribute('data-page'));
+        document.getElementById('rt-page-label').textContent = p;
+        syncPageToServer(p);
+      }
+    });
+  }, { root: document.querySelector('.book-stage'), threshold: 0.5 });
+
+  async function renderPDF(pdfDoc) {
+    const container = document.getElementById('rt-pdf-container');
+    container.innerHTML = '';
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const vp = page.getViewport({ scale });
+      const wrap = document.createElement('div');
+      wrap.className = 'page-3d-wrap';
+      wrap.style.minHeight = vp.height + 'px';
+      wrap.innerHTML = `<span class="page-num-tag">Page ${i}</span>`;
+      const canvas = document.createElement('canvas');
+      canvas.width = vp.width; canvas.height = vp.height;
+      canvas.setAttribute('data-page', i);
+      wrap.appendChild(canvas);
+      container.appendChild(wrap);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+      observer.observe(canvas);
+      if (i === lastSentPage && lastSentPage > 1) wrap.scrollIntoView();
+    }
+  }
+
+  pdfjsLib.getDocument(PDF_URL).promise.then(renderPDF).catch(() => {
+    document.getElementById('rt-pdf-container').innerHTML =
+      '<p style="color:#f87171;text-align:center;padding:2rem;">Could not load PDF.</p>';
+  });
+
+  document.getElementById('rt-zoom-in').addEventListener('click', () => {
+    scale = parseFloat((scale + 0.2).toFixed(1));
+    document.getElementById('rt-zoom-val').textContent = Math.round(scale * 100) + '%';
+    pdfjsLib.getDocument(PDF_URL).promise.then(renderPDF);
+  });
+  document.getElementById('rt-zoom-out').addEventListener('click', () => {
+    scale = Math.max(0.6, parseFloat((scale - 0.2).toFixed(1)));
+    document.getElementById('rt-zoom-val').textContent = Math.round(scale * 100) + '%';
+    pdfjsLib.getDocument(PDF_URL).promise.then(renderPDF);
+  });
+
+  // ── Page Sync ──
+  function syncPageToServer(page) {
+    if (page === lastSentPage) return;
+    lastSentPage = page;
+    const form = new FormData();
+    form.append('page', page);
+    fetch(`/read_together/${SESSION_ID}/sync_page`, { method: 'POST', body: form });
+  }
+
+  // Poll partner's page every 3 seconds
+  setInterval(() => {
+    fetch(`/read_together/${SESSION_ID}/get_page`)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('sync-page-display').textContent = data.page;
+      });
+  }, 3000);
+
+  // ── Chat ──
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInput = document.getElementById('chat-input');
+
+  function scrollChat() { chatMessages.scrollTop = chatMessages.scrollHeight; }
+  scrollChat();
+
+  function appendMessage(m) {
+    const isMe = m.sender_id === CURRENT_USER_ID;
+    const div = document.createElement('div');
+    div.className = `chat-msg ${isMe ? 'mine' : 'theirs'}`;
+    div.innerHTML = `
+      ${!isMe ? `<div class="msg-sender">${m.sender}</div>` : ''}
+      ${escHtml(m.message)}
+      <div class="msg-time">${m.time}</div>
+    `;
+    chatMessages.appendChild(div);
+    scrollChat();
+    if (m.id > lastMsgId) lastMsgId = m.id;
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Send message via fetch
+  document.getElementById('send-btn').addEventListener('click', sendMsg);
+  chatInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  });
+
+  function sendMsg() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    chatInput.value = '';
+    const form = new FormData();
+    form.append('message', text);
+    fetch(`/read_together/${SESSION_ID}/chat`, { method: 'POST', body: form })
+      .then(() => pollMessages());
+  }
+
+  // Poll new messages every 2 seconds
+  function pollMessages() {
+    fetch(`/read_together/${SESSION_ID}/messages`)
+      .then(r => r.json())
+      .then(msgs => {
+        msgs.forEach(m => {
+          if (m.id > lastMsgId) appendMessage(m);
+        });
+      });
+  }
+
+  // Set initial lastMsgId
+  {% if messages %}
+  lastMsgId = {{ messages[-1].id }};
+  {% endif %}
+
+  setInterval(pollMessages, 2000);
+</script>
+{% endblock %}

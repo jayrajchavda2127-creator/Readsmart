@@ -1,0 +1,401 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .book-detail-page {
+    max-width: 1100px;
+    margin: 4rem auto;
+    padding: 0 2rem;
+  }
+
+  .book-detail-hero {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 3rem;
+    background: white;
+    border-radius: 2rem;
+    padding: 3rem;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 3rem;
+  }
+
+  .book-cover-3d {
+    position: relative;
+    perspective: 1200px;
+  }
+
+  .book-cover-3d img {
+    width: 100%;
+    aspect-ratio: 2/3;
+    object-fit: cover;
+    border-radius: 4px 1rem 1rem 4px;
+    box-shadow:
+      -6px 6px 0 #c7d2fe,
+      -12px 12px 0 #a5b4fc,
+      -18px 18px 0 #818cf8;
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+  }
+
+  .book-cover-3d:hover img {
+    transform: rotateY(-10deg) translateX(8px);
+    box-shadow:
+      -10px 10px 0 #c7d2fe,
+      -20px 20px 0 #a5b4fc,
+      -28px 28px 0 #818cf8;
+  }
+
+  .book-meta h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-light);
+    line-height: 1.2;
+  }
+
+  .book-meta .author {
+    color: #64748b;
+    font-size: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .book-meta .category-badge {
+    display: inline-block;
+    background: rgba(79,70,229,0.1);
+    color: var(--primary);
+    padding: 0.3rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.5rem;
+  }
+
+  .star-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .stars {
+    display: flex;
+    gap: 2px;
+  }
+
+  .star-filled { color: #fbbf24; }
+  .star-empty { color: #d1d5db; }
+
+  .rating-count { color: #64748b; font-size: 0.9rem; }
+
+  .book-description {
+    color: #64748b;
+    line-height: 1.8;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+  }
+
+  .book-action-btns {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-read-now {
+    background: var(--primary);
+    color: white;
+    padding: 0.9rem 2.5rem;
+    border-radius: 9999px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1rem;
+    transition: var(--transition);
+    box-shadow: 0 8px 16px -4px rgba(79,70,229,0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-read-now:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 20px -4px rgba(79,70,229,0.5);
+  }
+
+  .btn-fav {
+    padding: 0.9rem 1.75rem;
+    border-radius: 9999px;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    background: transparent;
+    text-decoration: none;
+    font-weight: 700;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-fav:hover, .btn-fav.active {
+    background: var(--primary);
+    color: white;
+  }
+
+  .book-locked-msg {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1.5px solid #f59e0b;
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+    color: #92400e;
+    font-weight: 600;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Reviews Section */
+  .reviews-section {
+    background: white;
+    border-radius: 2rem;
+    padding: 2.5rem;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 2rem;
+  }
+
+  .reviews-section h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .review-card {
+    padding: 1.5rem;
+    border-radius: 1rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 1.25rem;
+  }
+
+  .review-card .reviewer {
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    color: var(--text-light);
+  }
+
+  .review-card .review-stars { margin-bottom: 0.5rem; }
+
+  .review-card p {
+    color: #64748b;
+    line-height: 1.6;
+    font-size: 0.95rem;
+  }
+
+  .review-card .review-date {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 0.5rem;
+  }
+
+  /* Write Review */
+  .review-form-box {
+    background: #f8fafc;
+    border-radius: 1.5rem;
+    padding: 2rem;
+    border: 1px solid #e2e8f0;
+    margin-top: 2rem;
+  }
+
+  .review-form-box h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+  }
+
+  .star-select {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .star-select input[type="radio"] { display: none; }
+  .star-select label {
+    font-size: 1.75rem;
+    cursor: pointer;
+    color: #d1d5db;
+    transition: color 0.2s;
+  }
+
+  .star-select input:checked ~ label,
+  .star-select label:hover,
+  .star-select label:hover ~ label { color: #fbbf24; }
+
+  .star-select { flex-direction: row-reverse; }
+
+  .review-form-box textarea {
+    width: 100%;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    min-height: 100px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: white;
+    color: var(--text-light);
+  }
+
+  .review-form-box textarea:focus { border-color: var(--primary); }
+
+  .btn-submit-review {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.8rem 2rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: var(--transition);
+  }
+
+  .btn-submit-review:hover { background: var(--primary-hover); transform: translateY(-2px); }
+
+  @media (max-width: 768px) {
+    .book-detail-hero {
+      grid-template-columns: 1fr;
+    }
+    .book-cover-3d { max-width: 220px; margin: 0 auto; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="book-detail-page fade-in">
+
+  <div class="book-detail-hero">
+    <!-- 3D Cover -->
+    <div class="book-cover-3d">
+      {% set cover_url = url_for('static', filename=book.cover) if book.cover else 'https://placehold.co/300x450?text=No+Cover' %}
+      <img src="{{ cover_url }}" alt="{{ book.title }}" onerror="this.onerror=null;this.src='https://placehold.co/300x450?text=No+Cover';">
+    </div>
+
+    <!-- Meta -->
+    <div class="book-meta">
+      <span class="category-badge">{{ book.category or 'General' }}</span>
+      <h1>{{ book.title }}</h1>
+      <p class="author"><i class="fas fa-pen-nib"></i> {{ book.author or 'Unknown Author' }}</p>
+
+      <!-- Star Rating -->
+      {% if avg_rating %}
+      <div class="star-rating">
+        <div class="stars">
+          {% for i in range(1, 6) %}
+            {% if i <= avg_rating|int %}
+              <i class="fas fa-star star-filled"></i>
+            {% elif i - avg_rating < 1 %}
+              <i class="fas fa-star-half-alt star-filled"></i>
+            {% else %}
+              <i class="far fa-star star-empty"></i>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <span class="rating-count">{{ avg_rating }} / 5 ({{ reviews|length }} review{{ 's' if reviews|length != 1 }})</span>
+      </div>
+      {% else %}
+      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.25rem;">No ratings yet. Be the first!</p>
+      {% endif %}
+
+      <p class="book-description">
+        {{ book.description or 'No description available for this book yet.' }}
+      </p>
+
+      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">
+        <i class="fas fa-file-alt"></i> {{ book.total_pages }} pages
+      </p>
+
+      <!-- Action Buttons -->
+      <div class="book-action-btns">
+        {% if current_user.is_authenticated %}
+          {% set is_special = current_user.email == 'you@gmail.com' %}
+          {% set has_sub = is_special or (current_user.subscription and current_user.subscription.is_active) %}
+          {% if has_sub %}
+            <a href="{{ url_for('read', book_id=book.id) }}" class="btn-read-now">
+              <i class="fas fa-book-open"></i> Read Now
+            </a>
+          {% else %}
+            <a href="{{ url_for('subscription') }}" class="btn-read-now" style="background: #f59e0b;">
+              <i class="fas fa-lock"></i> Subscribe to Read — ₹99
+            </a>
+          {% endif %}
+          <a href="{{ url_for('toggle_favourite', book_id=book.id) }}" class="btn-fav {% if is_favourite %}active{% endif %}">
+            <i class="fas fa-star"></i> {% if is_favourite %}Saved{% else %}Save{% endif %}
+          </a>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="btn-read-now">
+            <i class="fas fa-sign-in-alt"></i> Login to Read
+          </a>
+        {% endif %}
+      </div>
+
+      {% if current_user.is_authenticated and not is_special and not (current_user.subscription and current_user.subscription.is_active) %}
+      <div class="book-locked-msg" style="margin-top:1.25rem;">
+        <i class="fas fa-crown"></i>
+        Subscribe for ₹99/month to unlock all books instantly.
+        <a href="{{ url_for('subscription') }}" style="color: #d97706; margin-left: 0.5rem; text-decoration: underline;">Get Premium</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Reviews -->
+  <div class="reviews-section">
+    <h2><i class="fas fa-comments" style="color: var(--primary); margin-right: 0.5rem;"></i>Reader Reviews</h2>
+
+    {% if reviews %}
+      {% for r in reviews %}
+      <div class="review-card">
+        <div class="reviewer">{{ r.user.username }}</div>
+        {% if r.rating %}
+        <div class="review-stars">
+          {% for i in range(1, 6) %}
+            <i class="fas fa-star" style="color: {% if i <= r.rating %}#fbbf24{% else %}#d1d5db{% endif %}; font-size: 0.85rem;"></i>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <p>{{ r.review_text }}</p>
+        <span class="review-date">{{ r.created_at.strftime('%d %b %Y') }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p style="color: #94a3b8; font-style: italic;">No reviews yet. Share your thoughts!</p>
+    {% endif %}
+
+    <!-- Write / Edit Review -->
+    {% if current_user.is_authenticated %}
+    <div class="review-form-box">
+      <h3>{{ 'Edit Your Review' if user_review else 'Write a Review' }}</h3>
+      <form method="POST" action="{{ url_for('submit_review', book_id=book.id) }}">
+        <div class="star-select">
+          {% for i in range(5, 0, -1) %}
+          <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}"
+            {% if user_review and user_review.rating == i %}checked{% endif %}>
+          <label for="star{{ i }}">★</label>
+          {% endfor %}
+        </div>
+        <textarea name="review_text" placeholder="Share what you thought about this book...">{{ user_review.review_text if user_review else '' }}</textarea>
+        <button type="submit" class="btn-submit-review">
+          <i class="fas fa-paper-plane"></i> {{ 'Update Review' if user_review else 'Submit Review' }}
+        </button>
+      </form>
+    </div>
+    {% else %}
+    <p style="margin-top: 1.5rem; color: #64748b;">
+      <a href="{{ url_for('login') }}" style="color: var(--primary); font-weight: 600;">Log in</a> to write a review.
+    </p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .sub-page {
+    max-width: 900px;
+    margin: 5rem auto;
+    padding: 0 2rem;
+    text-align: center;
+  }
+
+  .sub-page h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--text-light);
+  }
+
+  .sub-page p.subtitle {
+    color: #64748b;
+    font-size: 1.1rem;
+    margin-bottom: 3rem;
+  }
+
+  .plan-card {
+    background: white;
+    border-radius: 2rem;
+    padding: 3rem 2.5rem;
+    box-shadow: var(--card-shadow);
+    border: 2px solid transparent;
+    max-width: 420px;
+    margin: 0 auto 3rem;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .plan-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+  }
+
+  .plan-card:hover { transform: translateY(-6px); border-color: var(--primary); }
+
+  .plan-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    padding: 0.4rem 1.2rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1.5rem;
+  }
+
+  .plan-price {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: var(--primary);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+
+  .plan-price span {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  .plan-features {
+    list-style: none;
+    text-align: left;
+    margin: 2rem 0;
+  }
+
+  .plan-features li {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  .plan-features li i { color: #22c55e; }
+
+  .btn-subscribe {
+    display: block;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    transition: var(--transition);
+    text-decoration: none;
+    box-shadow: 0 8px 16px -4px rgba(79,70,229,0.4);
+  }
+
+  .btn-subscribe:hover { transform: translateY(-3px); box-shadow: 0 12px 20px -4px rgba(79,70,229,0.5); }
+
+  .btn-cancel {
+    display: inline-block;
+    margin-top: 1rem;
+    color: #ef4444;
+    font-size: 0.875rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-weight: 600;
+  }
+
+  .active-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #dcfce7;
+    color: #16a34a;
+    padding: 0.5rem 1.25rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .rzp-logo {
+    margin-top: 1.25rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  body.dark-mode .plan-card { background: #1e293b; }
+  body.dark-mode .plan-features li { color: #94a3b8; border-color: #334155; }
+</style>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="sub-page fade-in">
+  <h1>📖 ReadZey Premium</h1>
+  <p class="subtitle">Unlock every book in our library with one simple plan.</p>
+
+  <div class="plan-card">
+    <div class="plan-badge">⭐ All Access Plan</div>
+
+    {% if sub and sub.is_active %}
+    <div class="active-badge"><i class="fas fa-check-circle"></i> Active Subscription</div>
+    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">
+      Member since {{ sub.start_date.strftime('%d %B %Y') }}
+    </p>
+    {% endif %}
+
+    <div class="plan-price">₹99 <span>/ month</span></div>
+
+    <ul class="plan-features">
+      <li><i class="fas fa-check"></i> Unlimited access to all books</li>
+      <li><i class="fas fa-check"></i> Read Together sessions</li>
+      <li><i class="fas fa-check"></i> Offline reading</li>
+      <li><i class="fas fa-check"></i> HD book quality</li>
+      <li><i class="fas fa-check"></i> Priority support</li>
+
+    </ul>
+
+    {% if sub and sub.is_active %}
+      <p style="color: #22c55e; font-weight: 700; margin-bottom: 1rem;">
+        <i class="fas fa-check-circle"></i> You have an active subscription!
+      </p>
+      <a href="{{ url_for('library') }}" class="btn-subscribe">Go Read Now →</a>
+      <form method="POST" action="{{ url_for('unsubscribe') }}" style="margin-top: 1rem;">
+        <button type="submit" class="btn-cancel" onclick="return confirm('Cancel your subscription?')">
+          Cancel Subscription
+        </button>
+      </form>
+    {% else %}
+      <button class="btn-subscribe" id="rzp-pay-btn">
+        <i class="fas fa-lock" style="margin-right:0.5rem;"></i> Subscribe Now — ₹99/month
+      </button>
+      <div class="rzp-logo">
+        🔒 Secured by <strong style="color:#3395ff;">Razorpay</strong>
+      </div>
+    {% endif %}
+  </div>
+
+  <p style="color: #94a3b8; font-size: 0.85rem;">Secure payment · Instant access</p>
+</div>
+
+{% if not (sub and sub.is_active) %}
+<!-- Hidden form to submit payment result -->
+<form id="rzp-verify-form" method="POST" action="{{ url_for('subscribe') }}" style="display:none;">
+  <input type="hidden" name="razorpay_payment_id" id="rzp_payment_id">
+  <input type="hidden" name="razorpay_order_id" id="rzp_order_id">
+  <input type="hidden" name="razorpay_signature" id="rzp_signature">
+</form>
+
+<script>
+  document.getElementById('rzp-pay-btn').addEventListener('click', function () {
+    // Create order on server first
+    fetch('{{ url_for("create_razorpay_order") }}', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert(data.error); return; }
+
+        const options = {
+          key: '{{ razorpay_key_id }}',
+          amount: data.amount,
+          currency: data.currency,
+          name: 'ReadZey Premium',
+          description: 'Monthly Subscription — ₹99',
+          order_id: data.order_id,
+          image: '/static/your-logo.png',
+          prefill: {
+            name: '{{ current_user.username }}',
+            email: '{{ current_user.email }}'
+          },
+          theme: { color: '#4f46e5' },
+          handler: function (response) {
+            document.getElementById('rzp_payment_id').value = response.razorpay_payment_id;
+            document.getElementById('rzp_order_id').value = response.razorpay_order_id;
+            document.getElementById('rzp_signature').value = response.razorpay_signature;
+            document.getElementById('rzp-verify-form').submit();
+          },
+          modal: {
+            ondismiss: function () {
+              console.log('Payment dismissed');
+            }
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.open();
+      })
+      .catch(() => alert('Could not initiate payment. Please try again.'));
+  });
+</script>
+{% endif %}
+{% endblock %}
